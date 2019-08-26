@@ -1,63 +1,49 @@
 #include <Arduino.h>
 #include <FastLED.h>
+#include "variables.h"
 #include "painlessMesh.h"
+#include "Wire.h"
 
-// Fastled setup
-#define NUM_LEDS 3
-#define DATA_PIN D4
 CRGB leds[NUM_LEDS];
-#define COOLING  55
-#define SPARKING 200
-
-// Mesh Setup
-#define MESH_PREFIX "HalloWeenWalk"
-#define MESH_PASSWORD "12345678"
-#define MESH_PORT 5555
-bool light = false;
-
-Scheduler userScheduler; // to control your personal task
+Scheduler userScheduler;
 painlessMesh mesh;
 
-// User stub
-void sendMessage(); // Prototype so PlatformIO doesn't complain
-
+void sendMessage();
 Task taskSendMessage(TASK_SECOND * 1, TASK_FOREVER, &sendMessage);
 
 void sendMessage()
 {
-  String msg = "Hello from node ";
+  String msg = "Master: ";
   msg += mesh.getNodeId();
   mesh.sendBroadcast(msg);
   taskSendMessage.setInterval(random(TASK_SECOND * 1, TASK_SECOND * 5));
 }
 
+void sendLightMessage(String mode)
+{
+  String msg = mode;
+  mesh.sendBroadcast(msg);
+}
+
 // Needed for painless library
 void receivedCallback(uint32_t from, String &msg)
 {
-  Serial.printf("startHere: Received from %u msg=%s\n", from, msg.c_str());
-
-  if(light == false){
-    switchOn();
- 
-  }else if(light== true){
-    switchOff();
-    
-  }else{}
+  Serial.printf("<-- Received from %u msg=%s\n", from, msg.c_str());
 }
 
 void newConnectionCallback(uint32_t nodeId)
 {
-  Serial.printf("--> startHere: New Connection, nodeId = %u\n", nodeId);
+  Serial.printf("<-- New Connection, nodeId = %u\n", nodeId);
 }
 
 void changedConnectionCallback()
 {
-  Serial.printf("Changed connections\n");
+  Serial.printf("<-- Changed connections\n");
 }
 
 void nodeTimeAdjustedCallback(int32_t offset)
 {
-  Serial.printf("Adjusted time %u. Offset = %d\n", mesh.getNodeTime(), offset);
+  Serial.printf("<-- Adjusted time %u. Offset = %d\n", mesh.getNodeTime(), offset);
 }
 
 void setup()
@@ -77,31 +63,16 @@ void setup()
 
   userScheduler.addTask(taskSendMessage);
   taskSendMessage.enable();
-  // it will run the user scheduler as well
-  mesh.update();
-  FastLED.setBrightness(255);
-  switchOff();
 }
 
-void switchOn(){
+void loop()
+{
+
   for (int whiteLed = 0; whiteLed < NUM_LEDS; whiteLed = whiteLed + 1)
   {
     leds[whiteLed] = CRGB::White;
     FastLED.show();
   }
-  light = true;
-}
-
-void switchOff(){
-  for (int whiteLed = 0; whiteLed < NUM_LEDS; whiteLed = whiteLed + 1)
-  {
-    leds[whiteLed] = CRGB::Black;
-    FastLED.show();
-  }
-  light = false;
-}
-
-void loop()
-{
-mesh.update();
+  mesh.update();
+  FastLED.setBrightness(255);
 }

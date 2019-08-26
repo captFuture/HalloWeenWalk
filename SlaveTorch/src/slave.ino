@@ -1,20 +1,9 @@
 #include <Arduino.h>
-//#include <M5Stack.h>
 #include <FastLED.h>
-
+#include "variables.h"
 #include "painlessMesh.h"
-#include "Wire.h"
 
-// Fastled setup
-#define NUM_LEDS 10
-#define DATA_PIN 15
 CRGB leds[NUM_LEDS];
-
-// Mesh Setup
-#define MESH_PREFIX "HalloWeenWalk"
-#define MESH_PASSWORD "12345678"
-#define MESH_PORT 5555
-
 Scheduler userScheduler; // to control your personal task
 painlessMesh mesh;
 
@@ -25,22 +14,24 @@ Task taskSendMessage(TASK_SECOND * 1, TASK_FOREVER, &sendMessage);
 
 void sendMessage()
 {
-  String msg = "Hello from Masternode ";
+  String msg = "Slave: ";
   msg += mesh.getNodeId();
   mesh.sendBroadcast(msg);
   taskSendMessage.setInterval(random(TASK_SECOND * 1, TASK_SECOND * 5));
 }
 
-void sendLightMessage(String mode)
-{
-  String msg = mode;
-  mesh.sendBroadcast(msg);
-}
-
 // Needed for painless library
 void receivedCallback(uint32_t from, String &msg)
 {
-  Serial.printf("startHere: Received from %u msg=%s\n", from, msg.c_str());
+  Serial.printf("Received from %u msg=%s\n", from, msg.c_str());
+
+  if(light == false){
+    switchOn();
+ 
+  }else if(light== true){
+    switchOff();
+    
+  }else{}
 }
 
 void newConnectionCallback(uint32_t nodeId)
@@ -75,17 +66,31 @@ void setup()
 
   userScheduler.addTask(taskSendMessage);
   taskSendMessage.enable();
+  // it will run the user scheduler as well
+  mesh.update();
+  FastLED.setBrightness(255);
+  switchOff();
 }
 
-void loop()
-{
-
+void switchOn(){
   for (int whiteLed = 0; whiteLed < NUM_LEDS; whiteLed = whiteLed + 1)
   {
     leds[whiteLed] = CRGB::White;
     FastLED.show();
   }
-    // it will run the user scheduler as well
-    mesh.update();
-  FastLED.setBrightness(255);
+  light = true;
+}
+
+void switchOff(){
+  for (int whiteLed = 0; whiteLed < NUM_LEDS; whiteLed = whiteLed + 1)
+  {
+    leds[whiteLed] = CRGB::Black;
+    FastLED.show();
+  }
+  light = false;
+}
+
+void loop()
+{
+mesh.update();
 }
